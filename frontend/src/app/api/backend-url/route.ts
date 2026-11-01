@@ -17,8 +17,11 @@ export async function GET() {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-    const res = await fetch(`${currentUrl}/health`, { signal: controller.signal });
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(`${currentUrl}/health`, {
+      signal: controller.signal,
+      cache: "no-store",
+    });
     clearTimeout(timeoutId);
     isHealthy = res.ok;
   } catch {
@@ -28,8 +31,11 @@ export async function GET() {
   if (isHealthy) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
-      const res = await fetch(`${currentUrl}/health/worker`, { signal: controller.signal });
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(`${currentUrl}/health/worker`, {
+        signal: controller.signal,
+        cache: "no-store",
+      });
       clearTimeout(timeoutId);
       workerHealthy = res.ok;
     } catch {
@@ -56,40 +62,54 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "A valid URL string is required" }, { status: 400 });
   }
 
-  url = url.trim().replace(/\/$/, "");
+  // Clean and normalize URL
+  url = url.trim();
+  url = url.replace(/\/health\/?$/, "").replace(/\/$/, "");
+
+  // Auto-prepend https:// if omitted by user
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    return NextResponse.json({ error: "URL must start with http:// or https://" }, { status: 400 });
+    url = `https://${url}`;
   }
 
-  // Probe the new URL
+  // Probe the URL with a 12-second timeout for international round-trips
   let isHealthy = false;
   let workerHealthy = false;
+  let probeError: string | null = null;
+
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(`${url}/health`, { signal: controller.signal });
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const res = await fetch(`${url}/health`, {
+      signal: controller.signal,
+      headers: { "User-Agent": "SupoClip-HealthCheck/1.0" },
+      cache: "no-store",
+    });
     clearTimeout(timeoutId);
     isHealthy = res.ok;
-  } catch (e) {
-    return NextResponse.json(
-      {
-        error: `Could not connect to ${url}/health. Make sure your phone backend (uvicorn) and cloudflared tunnel are running.`,
-      },
-      { status: 400 },
-    );
+    if (!res.ok) {
+      probeError = `Health endpoint returned status ${res.status}`;
+    }
+  } catch (e: unknown) {
+    const err = e as { name?: string; message?: string };
+    probeError = err?.name === "AbortError" ? "Connection probe timed out after 12s" : (err?.message || "Connection refused");
   }
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(`${url}/health/worker`, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    workerHealthy = res.ok;
-  } catch {
-    workerHealthy = false;
+  if (isHealthy) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(`${url}/health/worker`, {
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      clearTimeout(timeoutId);
+      workerHealthy = res.ok;
+    } catch {
+      workerHealthy = false;
+    }
   }
 
-  // Save to Neon PostgreSQL app_settings
+  // Save to Neon PostgreSQL app_settings (regardless of transient probe status so user isn't blocked)
   await prisma.appSetting.upsert({
     where: { setting_key: "mobile_backend_url" },
     create: {
@@ -105,14 +125,23 @@ export async function POST(request: Request) {
 
   setMemoryCachedBackendUrl(url);
 
+  if (!isHealthy) {
+    return NextResponse.json({
+      success: true,
+      url,
+      healthy: false,
+      workerHealthy: false,
+      warning: `Saved ${url}, but probe could not verify: ${probeError}. Ensure your phone uvicorn & cloudflared are running.`,
+    });
+  }
+
   return NextResponse.json({
     success: true,
     url,
     healthy: isHealthy,
     workerHealthy,
     message: workerHealthy
-      ? "Connected successfully to phone backend & worker!"
+      ? "Connected successfully to phone backend & 24GB worker!"
       : "Connected to phone backend (Worker process is offline; start it with: python -m src.worker_main)",
   });
 }
-

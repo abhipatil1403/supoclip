@@ -75,14 +75,20 @@ export function MobileNodeModal({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url.trim()) return;
+    let targetUrl = url.trim();
+    if (!targetUrl) return;
+
+    if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+      targetUrl = `https://${targetUrl}`;
+      setUrl(targetUrl);
+    }
 
     setSaving(true);
     try {
       const res = await fetch("/api/backend-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: targetUrl }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -96,13 +102,15 @@ export function MobileNodeModal({
         currentUrl: data.url,
       });
 
-      if (data.workerHealthy) {
+      if (data.warning) {
+        toast.warning(data.warning);
+      } else if (data.workerHealthy) {
         toast.success(data.message || "Connected to phone backend & worker!");
         setOpen(false);
       } else {
         toast.warning(data.message || "Connected to phone backend, but worker is offline!");
       }
-    } catch (err) {
+    } catch {
       toast.error("Network error while connecting to phone tunnel");
     } finally {
       setSaving(false);
@@ -211,15 +219,15 @@ export function MobileNodeModal({
               </label>
               <Input
                 id="tunnel-url"
-                type="url"
+                type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://xxxx-xxxx.trycloudflare.com"
+                placeholder="https://xxxx-xxxx.trycloudflare.com or xxxx.trycloudflare.com"
                 required
                 className="font-mono text-xs"
               />
               <p className="text-[11px] text-muted-foreground">
-                Run <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]">cloudflared tunnel --url http://localhost:8000</code> in Termux and paste the generated link here.
+                Paste your <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]">trycloudflare.com</code> link here.
               </p>
             </div>
 
@@ -253,4 +261,3 @@ export function MobileNodeModal({
     </Dialog>
   );
 }
-
