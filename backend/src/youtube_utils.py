@@ -99,6 +99,11 @@ class YouTubeDownloader:
             "nocheckcertificate": True,
             "prefer_insecure": False,
             "age_limit": None,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "ios", "mweb", "web"]
+                }
+            },
         }
 
         return opts
@@ -123,6 +128,11 @@ def _build_info_options(task_id: Optional[str] = None) -> Dict[str, Any]:
             "Connection": "keep-alive",
         },
         "nocheckcertificate": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "ios", "mweb", "web"]
+            }
+        },
     }
     if shutil.which("deno"):
         ydl_opts.setdefault("js_runtimes", {})["deno"] = {}
