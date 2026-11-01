@@ -100,33 +100,34 @@ export async function fetchBackend(
 
 export function createProxyResponse(
   upstream: Response,
-  options: {
-    cacheControl?: string;
-    extraHeaders?: HeadersInit;
-  } = {},
+  forwardedHeaders: readonly string[] = DEFAULT_FORWARDED_HEADERS,
 ) {
-  const headers = new Headers();
-
-  for (const header of DEFAULT_FORWARDED_HEADERS) {
-    const value = upstream.headers.get(header);
-    if (value !== null) {
-      headers.set(header, value);
+  const responseHeaders = new Headers();
+  for (const headerName of forwardedHeaders) {
+    const value = upstream.headers.get(headerName);
+    if (value) {
+      responseHeaders.set(headerName, value);
     }
-  }
-
-  if (options.cacheControl) {
-    headers.set("cache-control", options.cacheControl);
-  }
-
-  if (options.extraHeaders) {
-    const extra = new Headers(options.extraHeaders);
-    extra.forEach((value, key) => {
-      headers.set(key, value);
-    });
   }
 
   return new Response(upstream.body, {
     status: upstream.status,
-    headers,
+    headers: responseHeaders,
+  });
+}
+
+export async function createTextProxyResponse(
+  upstream: Response,
+  contentTypeFallback = "application/json",
+) {
+  const body = await upstream.text();
+  return new Response(body, {
+    status: upstream.status,
+    headers: {
+      "Content-Type": upstream.headers.get("content-type") || contentTypeFallback,
+      ...(upstream.headers.get("x-trace-id")
+        ? { "x-trace-id": upstream.headers.get("x-trace-id") as string }
+        : {}),
+    },
   });
 }
