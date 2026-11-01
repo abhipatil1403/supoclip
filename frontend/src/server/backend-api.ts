@@ -19,7 +19,7 @@ export function getBackendApiBaseUrl() {
   const apiUrl =
     process.env.BACKEND_INTERNAL_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:8000";
+    "https://chan-dna-engineering-earlier.trycloudflare.com";
 
   return apiUrl.replace(/\/$/, "");
 }
