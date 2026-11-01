@@ -20,28 +20,39 @@ async function proxyTaskRequest(
       ? undefined
       : await request.text();
 
-  const upstream = await fetchBackend(targetPath, {
-    method: request.method,
-    // Close the backend stream even when the client leaves before headers arrive.
-    signal: request.signal,
-    userId: session.user.id,
-    extraHeaders: {
-      ...(body && request.headers.get("content-type")
-        ? { "Content-Type": request.headers.get("content-type") as string }
-        : {}),
-      ...(request.headers.get("accept")
-        ? { Accept: request.headers.get("accept") as string }
-        : {}),
-      ...(request.headers.get("range")
-        ? { Range: request.headers.get("range") as string }
-        : {}),
-      ...(request.headers.get("if-range")
-        ? { "If-Range": request.headers.get("if-range") as string }
-        : {}),
-    },
-    body,
-    cache: "no-store",
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetchBackend(targetPath, {
+      method: request.method,
+      // Close the backend stream even when the client leaves before headers arrive.
+      signal: request.signal,
+      userId: session.user.id,
+      extraHeaders: {
+        ...(body && request.headers.get("content-type")
+          ? { "Content-Type": request.headers.get("content-type") as string }
+          : {}),
+        ...(request.headers.get("accept")
+          ? { Accept: request.headers.get("accept") as string }
+          : {}),
+        ...(request.headers.get("range")
+          ? { Range: request.headers.get("range") as string }
+          : {}),
+        ...(request.headers.get("if-range")
+          ? { "If-Range": request.headers.get("if-range") as string }
+          : {}),
+      },
+      body,
+      cache: "no-store",
+    });
+  } catch (error) {
+    if (request.signal.aborted) {
+      return new Response(null, { status: 499 });
+    }
+    return NextResponse.json(
+      { error: "Backend service temporarily unavailable. Please retry shortly." },
+      { status: 503, headers: { "Retry-After": "2" } }
+    );
+  }
 
   // Canvas video needs a CORS-enabled response. Following a same-origin
   // redirect to object storage can produce a request without Origin, so the

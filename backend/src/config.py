@@ -14,6 +14,17 @@ DOCKER_OLLAMA_BASE_URL = "http://host.docker.internal:11434/v1"
 class Config:
     def __init__(self):
         self.openai_api_key = self._get_runtime_setting("OPENAI_API_KEY")
+        self.openai_base_url = self._get_runtime_setting("OPENAI_BASE_URL")
+        self.fastrouter_api_key = self._get_runtime_setting("FASTROUTER_API_KEY")
+        self.fastrouter_base_url = (
+            self._get_runtime_setting("FASTROUTER_BASE_URL")
+            or "https://api.fastrouter.ai/api/v1"
+        )
+        self.anyrouter_api_key = self._get_runtime_setting("ANYROUTER_API_KEY")
+        self.anyrouter_base_url = (
+            self._get_runtime_setting("ANYROUTER_BASE_URL")
+            or "https://anyrouter.cfd/v1"
+        )
         self.openrouter_api_key = self._get_runtime_setting("OPENROUTER_API_KEY")
         self.openrouter_fallback_model = self._get_optional_env("OPENROUTER_FALLBACK_MODEL") or "openai/gpt-6-luna"
         self.anthropic_api_key = self._get_runtime_setting("ANTHROPIC_API_KEY")
@@ -58,8 +69,8 @@ class Config:
         # the backend runs under amd64 emulation.
         self.youtube_preflight_timeout_seconds = self._get_positive_float_env(
             "YOUTUBE_PREFLIGHT_TIMEOUT_SECONDS",
-            30.0,
-            maximum=180.0,
+            90.0,
+            maximum=300.0,
         )
         # Empty disables the residential-proxy yt-dlp path. Nothing in the
         # download chain changes until this template is set.
@@ -317,6 +328,11 @@ class Config:
             "ASSEMBLY_AI_API_KEY": self.assembly_ai_api_key,
             "LLM": self.llm,
             "OPENAI_API_KEY": self.openai_api_key,
+            "OPENAI_BASE_URL": self.openai_base_url,
+            "FASTROUTER_API_KEY": self.fastrouter_api_key,
+            "FASTROUTER_BASE_URL": self.fastrouter_base_url,
+            "ANYROUTER_API_KEY": self.anyrouter_api_key,
+            "ANYROUTER_BASE_URL": self.anyrouter_base_url,
             "OPENROUTER_API_KEY": self.openrouter_api_key,
             "GOOGLE_API_KEY": self.google_api_key,
             "ANTHROPIC_API_KEY": self.anthropic_api_key,
@@ -429,6 +445,10 @@ class Config:
         """
         if self.google_api_key:
             return "google-gla:gemini-3-flash-preview"
+        if self.fastrouter_api_key:
+            return "fastrouter:auto"
+        if self.anyrouter_api_key:
+            return "anyrouter:gpt-4o"
         if self.openai_api_key:
             return "openai:gpt-5.2"
         if self.anthropic_api_key:

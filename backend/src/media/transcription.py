@@ -331,6 +331,14 @@ def get_video_transcript(
     runtime_config = get_config()
     provider = runtime_config.transcription_provider
 
+    # Re-use cached transcript data if already generated on disk
+    cached_data = load_cached_transcript_data(video_path)
+    if cached_data and cached_data.get("words") and (cached_data.get("utterances") or cached_data.get("text")):
+        formatted_lines = format_transcript_for_analysis(cached_data)
+        if formatted_lines:
+            logger.info("Reusing cached transcript on disk for %s (%d segments)", video_path, len(formatted_lines))
+            return "\n".join(formatted_lines)
+
     if provider == "whisper":
         return _get_transcript_with_whisper(video_path, runtime_config)
     if provider == "youtube_captions":
@@ -501,9 +509,13 @@ def cache_transcript_data(video_path: Path, transcript) -> None:
     logger.info(f"Cached {len(words_data)} words to {cache_path}")
 
 
-def load_cached_transcript_data(video_path: Path) -> Optional[Dict]:
+def load_cached_transcript_data(video_path: Path | str) -> Optional[Dict]:
     """Load cached AssemblyAI transcript data."""
-    cache_path = video_path.with_suffix(".transcript_cache.json")
+    path_obj = Path(video_path)
+    if path_obj.name.endswith(".transcript_cache.json"):
+        cache_path = path_obj
+    else:
+        cache_path = path_obj.with_suffix(".transcript_cache.json")
 
     if not cache_path.exists():
         return None
@@ -570,6 +582,15 @@ def _format_words_for_analysis(
     if not words:
         return []
 
+    def _get_w_start(w):
+        return w.get("start", 0) if isinstance(w, dict) else getattr(w, "start", 0)
+
+    def _get_w_end(w):
+        return w.get("end", 0) if isinstance(w, dict) else getattr(w, "end", 0)
+
+    def _get_w_text(w):
+        return w.get("text", "") if isinstance(w, dict) else getattr(w, "text", "")
+
     formatted_lines: List[str] = []
     current_words: List[Any] = []
     current_start: Optional[int] = None
@@ -578,9 +599,9 @@ def _format_words_for_analysis(
         nonlocal current_words, current_start
         if not current_words:
             return
-        start_time = format_ms_to_timestamp(current_words[0].start)
-        end_time = format_ms_to_timestamp(current_words[-1].end)
-        text = _join_transcript_tokens([word.text for word in current_words])
+        start_time = format_ms_to_timestamp(_get_w_start(current_words[0]))
+        end_time = format_ms_to_timestamp(_get_w_end(current_words[-1]))
+        text = _join_transcript_tokens([_get_w_text(word) for word in current_words])
         if text:
             speaker_prefix = f"Speaker {speaker}: " if speaker else ""
             formatted_lines.append(f"[{start_time} - {end_time}] {speaker_prefix}{text}")
@@ -589,12 +610,12 @@ def _format_words_for_analysis(
 
     for word in words:
         if current_start is None:
-            current_start = word.start
+            current_start = _get_w_start(word)
 
         current_words.append(word)
-        duration_ms = word.end - current_start
+        duration_ms = _get_w_end(word) - current_start
         segment_word_count = len(current_words)
-        ends_sentence = str(word.text).endswith((".", "!", "?"))
+        ends_sentence = str(_get_w_text(word)).endswith((".", "!", "?"))
 
         should_flush = False
         if segment_word_count >= max_words_per_segment:
@@ -620,21 +641,56 @@ def _format_words_for_analysis(
 def format_transcript_for_analysis(transcript) -> List[str]:
     """Format transcripts into readable timestamped segments for AI analysis.
 
-    Handles both AssemblyAI transcript objects (utterances/words with ms
-    timings) and Whisper result dicts (segments with second-based timings).
+    Handles AssemblyAI transcript objects, Whisper result dicts, and cached
+    payload dicts (with utterances or words).
     """
-    # Whisper result dict: treat each segment as an utterance, converting the
-    # second-based timings to milliseconds to match the timestamp formatter.
     if isinstance(transcript, dict):
-        formatted_lines = []
-        for segment in transcript.get("segments") or []:
-            start_ms = int(segment.get("start", 0) * 1000)
-            end_ms = int(segment.get("end", 0) * 1000)
-            formatted_lines.append(
-                f"[{format_ms_to_timestamp(start_ms)} - {format_ms_to_timestamp(end_ms)}] "
-                f"{segment.get('text', '').strip()}"
-            )
-        return formatted_lines
+        if "segments" in transcript and not transcript.get("utterances"):
+            formatted_lines = []
+            for segment in transcript.get("segments") or []:
+                start_ms = int(segment.get("start", 0) * 1000)
+                end_ms = int(segment.get("end", 0) * 1000)
+                formatted_lines.append(
+                    f"[{format_ms_to_timestamp(start_ms)} - {format_ms_to_timestamp(end_ms)}] "
+                    f"{segment.get('text', '').strip()}"
+                )
+            return formatted_lines
+
+        utterances = transcript.get("utterances") or []
+        if utterances:
+            formatted_lines = []
+            for utterance in utterances:
+                u_start = utterance.get("start", 0)
+                u_end = utterance.get("end", 0)
+                u_text = utterance.get("text", "")
+                u_speaker = utterance.get("speaker")
+                utterance_words = list(utterance.get("words") or [])
+                utterance_duration = max(0, int(u_end) - int(u_start))
+                if utterance_words and (
+                    utterance_duration > ANALYSIS_UTTERANCE_SPLIT_THRESHOLD_MS
+                    or len(utterance_words) > ANALYSIS_UTTERANCE_SPLIT_THRESHOLD_WORDS
+                ):
+                    formatted_lines.extend(
+                        _format_words_for_analysis(
+                            utterance_words,
+                            u_speaker,
+                            max_words_per_segment=ANALYSIS_LONG_UTTERANCE_MAX_WORDS,
+                            max_duration_ms=ANALYSIS_LONG_UTTERANCE_MAX_DURATION_MS,
+                        )
+                    )
+                    continue
+
+                start_time = format_ms_to_timestamp(u_start)
+                end_time = format_ms_to_timestamp(u_end)
+                speaker_prefix = f"Speaker {u_speaker}: " if u_speaker else ""
+                formatted_lines.append(
+                    f"[{start_time} - {end_time}] {speaker_prefix}{u_text.strip()}"
+                )
+            return formatted_lines
+
+        words = transcript.get("words") or []
+        if words:
+            return _format_words_for_analysis(words)
 
     utterances = getattr(transcript, "utterances", None) or []
     if utterances:

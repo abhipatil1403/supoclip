@@ -35,6 +35,8 @@ const trustedOrigins = getAuthTrustedOrigins({
 });
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3107",
+  basePath: "/api/auth",
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),

@@ -33,7 +33,7 @@ def clamp_even(value: int, minimum: int, maximum: int) -> int:
     return round_to_even(max(minimum, min(value, maximum)))
 
 
-def run_ffmpeg_command(command: List[str], timeout: int = 900) -> subprocess.CompletedProcess:
+def run_ffmpeg_command(command: List[str], timeout: int = 1800) -> subprocess.CompletedProcess:
     """Run ffmpeg/ffprobe and log stderr on failure."""
     result = subprocess.run(
         command,

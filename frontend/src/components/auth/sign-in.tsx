@@ -59,6 +59,7 @@ export function SignIn() {
           <Input
             className="h-11"
             type="email"
+            autoComplete="email"
             placeholder={t("signIn.email")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -68,6 +69,7 @@ export function SignIn() {
           <Input
             className="h-11"
             type="password"
+            autoComplete="current-password"
             placeholder={t("signIn.password")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}

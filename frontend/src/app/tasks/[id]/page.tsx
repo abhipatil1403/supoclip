@@ -265,16 +265,20 @@ export default function TaskPage() {
           cache: "no-store",
         });
 
-        // Handle 404 with retry logic (task might not be persisted yet)
-        if (taskResponse.status === 404 && retryCount < maxRetries) {
+        // Handle retryable status codes (404, 502, 503, 504)
+        if ([404, 502, 503, 504].includes(taskResponse.status) && retryCount < maxRetries) {
+          const delay = Math.min((retryCount + 1) * 1000, 5000);
           console.log(
-            `Task not found yet, retrying in ${(retryCount + 1) * 500}ms... (${retryCount + 1}/${maxRetries})`,
+            `Task request returned ${taskResponse.status}, retrying in ${delay}ms... (${retryCount + 1}/${maxRetries})`
           );
-          await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 500));
+          await new Promise((resolve) => setTimeout(resolve, delay));
           return fetchTaskStatus(retryCount + 1, maxRetries, background);
         }
 
         if (!taskResponse.ok) {
+          if (background) {
+            return false;
+          }
           throw new Error(await buildSupportError(taskResponse, t("errors.fetchTask", { status: taskResponse.status })));
         }
 
@@ -302,6 +306,10 @@ export default function TaskPage() {
           });
 
           if (!clipsResponse.ok) {
+            if (background) {
+              setTask(taskData);
+              return true;
+            }
             throw new Error(await buildSupportError(clipsResponse, t("errors.fetchClips", { status: clipsResponse.status })));
           }
 
@@ -328,8 +336,17 @@ export default function TaskPage() {
         setTask(taskData);
         return true;
       } catch (err) {
-        console.error("Error fetching task data:", err);
-        if (!background) setError(err instanceof Error ? err.message : t("errors.load"));
+        if (!background) {
+          console.error("Error fetching task data:", err);
+          const message = err instanceof Error ? err.message : String(err);
+          if (message.includes("Failed to fetch")) {
+            setError(
+              "Unable to reach the server. If you have a browser VPN or proxy extension active (e.g. Urban VPN), please pause it for localhost or use an Incognito window."
+            );
+          } else {
+            setError(message || t("errors.load"));
+          }
+        }
         return false;
       }
     },
@@ -385,7 +402,7 @@ export default function TaskPage() {
   const { reconnecting } = useTaskProgress<Clip>({
     taskId: String(params.id || ""),
     active: ACTIVE_TASK_STATUSES.includes(task?.status || ""),
-    refresh: () => fetchTaskStatus(0, 0, true),
+    refresh: () => fetchTaskStatus(0, 3, true),
     onProgress: (data) => {
       if (typeof data.progress === "number") setProgress(data.progress);
       if (typeof data.message === "string") setProgressMessage(data.message);

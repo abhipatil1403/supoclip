@@ -344,6 +344,9 @@ class TaskRepository:
         # Build dynamic query based on what's provided
         set_parts = ["status = :status"]
 
+        if status == "processing":
+            set_parts.append("error_code = NULL")
+
         if progress is not None:
             set_parts.append("progress = :progress")
 

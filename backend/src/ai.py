@@ -16,11 +16,13 @@ from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.models import Model
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.ollama import OllamaModel
+from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.models.openrouter import OpenRouterModel
 from pydantic_ai.profiles.openai import OpenAIModelProfile
 from pydantic_ai.profiles.anthropic import AnthropicModelProfile
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.providers.ollama import OllamaProvider
+from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.providers.openrouter import OpenRouterProvider
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 
@@ -438,7 +440,7 @@ def build_transcript_system_prompt(clip_length: str = "auto") -> str:
 _transcript_agent: Optional[Agent[None, TranscriptAnalysis]] = None
 _transcript_agent_signature: Optional[tuple[str | None, ...]] = None
 
-SUPPORTED_LLM_PROVIDERS = {"google", "google-gla", "openai", "openrouter", "anthropic", "ollama"}
+SUPPORTED_LLM_PROVIDERS = {"google", "google-gla", "openai", "openrouter", "anthropic", "ollama", "fastrouter", "anyrouter"}
 
 
 def _split_llm_name(model_name: str) -> tuple[str, str | None]:
@@ -456,7 +458,7 @@ def _get_missing_llm_key_error(model_name: str, runtime_config: Config) -> Optio
     if provider not in SUPPORTED_LLM_PROVIDERS:
         return (
             f"Unsupported LLM provider '{provider}'. "
-            "Use google-gla:*, openai:*, openrouter:*, anthropic:*, or ollama:*."
+            "Use google-gla:*, openai:*, openrouter:*, anthropic:*, ollama:*, fastrouter:*, or anyrouter:*."
         )
 
     if not provider_model_name:
@@ -473,6 +475,12 @@ def _get_missing_llm_key_error(model_name: str, runtime_config: Config) -> Optio
 
     if provider == "openrouter" and not runtime_config.openrouter_api_key:
         return "Selected LLM provider is OpenRouter, but OPENROUTER_API_KEY is not set."
+
+    if provider == "fastrouter" and not (runtime_config.fastrouter_api_key or runtime_config.openai_api_key):
+        return "Selected LLM provider is FastRouter, but FASTROUTER_API_KEY (or OPENAI_API_KEY) is not set."
+
+    if provider == "anyrouter" and not (runtime_config.anyrouter_api_key or runtime_config.openai_api_key):
+        return "Selected LLM provider is AnyRouter, but ANYROUTER_API_KEY (or OPENAI_API_KEY) is not set."
 
     if provider == "openrouter" and "/" not in provider_model_name:
         return "OpenRouter model must include its vendor, for example openrouter:anthropic/claude-sonnet-5.5."
@@ -499,7 +507,7 @@ def _get_missing_llm_key_error(model_name: str, runtime_config: Config) -> Optio
 
 def _uses_native_output(model_name: str) -> bool:
     provider, name = _split_llm_name(model_name)
-    return provider == "openrouter" or (
+    return provider in {"openrouter", "fastrouter", "anyrouter"} or (
         provider == "anthropic" and name == "claude-sonnet-5-5"
     )
 
@@ -521,6 +529,28 @@ def _build_transcript_model(
             profile=profile,
             settings={"max_tokens": 8192},
         )
+    if provider in {"fastrouter", "anyrouter"} or (provider == "openai" and runtime_config.openai_base_url):
+        if provider == "fastrouter":
+            base_url = runtime_config.fastrouter_base_url or "https://api.fastrouter.ai/api/v1"
+            api_key = runtime_config.fastrouter_api_key or runtime_config.openai_api_key
+        elif provider == "anyrouter":
+            base_url = runtime_config.anyrouter_base_url or "https://anyrouter.cfd/v1"
+            api_key = runtime_config.anyrouter_api_key or runtime_config.openai_api_key
+        else:
+            base_url = runtime_config.openai_base_url
+            api_key = runtime_config.openai_api_key
+
+        profile = OpenAIModelProfile(supports_json_schema_output=True)
+        return OpenAIModel(
+            provider_model_name,
+            provider=OpenAIProvider(
+                base_url=base_url,
+                api_key=api_key,
+            ),
+            profile=profile,
+            settings={"max_tokens": 8192},
+        )
+
     if provider == "openrouter":
         fallback = runtime_config.openrouter_fallback_model
         if not provider_model_name or "/" not in provider_model_name or "/" not in fallback:
@@ -541,6 +571,19 @@ def _build_transcript_model(
                 "max_tokens": 8192,
             },
         )
+    if provider in {"google", "google-gla"}:
+        actual_model = provider_model_name or "gemini-2.5-flash"
+        if actual_model in {
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gemini-2.0-flash-exp",
+            "gemini-1.5-pro",
+            "gemini-2.0-pro",
+        }:
+            logger.info("Aliasing %s to gemini-2.5-flash for compatibility", actual_model)
+            actual_model = "gemini-2.5-flash"
+        return f"google:{actual_model}"
+
     if provider != "ollama":
         return model_name
 
@@ -568,6 +611,11 @@ def get_transcript_agent(clip_length: str = "auto") -> Agent[None, TranscriptAna
         clip_length,
         runtime_config.llm,
         runtime_config.openai_api_key,
+        runtime_config.openai_base_url,
+        runtime_config.fastrouter_api_key,
+        runtime_config.fastrouter_base_url,
+        runtime_config.anyrouter_api_key,
+        runtime_config.anyrouter_base_url,
         runtime_config.openrouter_api_key,
         runtime_config.openrouter_fallback_model,
         runtime_config.google_api_key,
@@ -648,6 +696,11 @@ def get_rerank_agent() -> Agent[None, CandidateRanking]:
     signature = (
         model_name,
         runtime_config.openai_api_key,
+        runtime_config.openai_base_url,
+        runtime_config.fastrouter_api_key,
+        runtime_config.fastrouter_base_url,
+        runtime_config.anyrouter_api_key,
+        runtime_config.anyrouter_base_url,
         runtime_config.openrouter_api_key,
         runtime_config.openrouter_fallback_model,
         runtime_config.google_api_key,
@@ -723,6 +776,11 @@ def get_broll_agent() -> Agent[None, BRollPlan]:
     signature = (
         model_name,
         runtime_config.openai_api_key,
+        runtime_config.openai_base_url,
+        runtime_config.fastrouter_api_key,
+        runtime_config.fastrouter_base_url,
+        runtime_config.anyrouter_api_key,
+        runtime_config.anyrouter_base_url,
         runtime_config.openrouter_api_key,
         runtime_config.openrouter_fallback_model,
         runtime_config.google_api_key,

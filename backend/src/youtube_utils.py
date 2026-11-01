@@ -4,6 +4,8 @@ Optimized for free yt-dlp downloads with optional Apify fallback.
 """
 
 import asyncio
+import os
+import shutil
 from datetime import datetime
 import logging
 import re
@@ -111,7 +113,9 @@ def _build_info_options(task_id: Optional[str] = None) -> Dict[str, Any]:
         # A watch?v=X&list=Y link otherwise resolves to the whole playlist,
         # which has no duration and can take minutes to walk.
         "noplaylist": True,
-        "socket_timeout": 30,
+        "socket_timeout": 15,
+        "youtube_include_dash_manifest": False,
+        "youtube_include_hls_manifest": False,
         "http_headers": {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -120,6 +124,8 @@ def _build_info_options(task_id: Optional[str] = None) -> Dict[str, Any]:
         },
         "nocheckcertificate": True,
     }
+    if shutil.which("deno"):
+        ydl_opts.setdefault("js_runtimes", {})["deno"] = {}
     if proxy_configured():
         # Metadata must leave through the same proxy as the media, or YouTube
         # bot-checks the server IP before a download starts. No player client
@@ -410,7 +416,14 @@ def get_youtube_video_info(
         if primary_provider == YOUTUBE_METADATA_PROVIDER_YTDLP
         else YOUTUBE_METADATA_PROVIDER_YTDLP
     )
-    providers = [primary_provider, secondary_provider]
+    # If YouTube Data API key / Google API key is configured, try it first for instant (<0.5s) metadata
+    if (
+        config.resolve_youtube_data_api_key()
+        and os.getenv("YOUTUBE_METADATA_PROVIDER") != YOUTUBE_METADATA_PROVIDER_YTDLP
+    ):
+        providers = [YOUTUBE_METADATA_PROVIDER_DATA_API, YOUTUBE_METADATA_PROVIDER_YTDLP]
+    else:
+        providers = [primary_provider, secondary_provider]
     last_error: Optional[Exception] = None
 
     for index, provider in enumerate(providers):

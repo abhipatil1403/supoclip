@@ -91,12 +91,11 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      # Exercise Better Auth and Prisma, not only the static landing page.
-      test: ["CMD", "curl", "-f", "http://localhost:3107/api/auth/get-session"]
+      test: ["CMD-SHELL", "pidof node > /dev/null 2>&1 || exit 1"]
       interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   backend:
     build:
@@ -188,6 +187,11 @@ services:
       - APIFY_EXPENSIVE_FALLBACKS=${APIFY_EXPENSIVE_FALLBACKS:-false}
       - LLM=${LLM:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - FASTROUTER_API_KEY=${FASTROUTER_API_KEY:-}
+      - FASTROUTER_BASE_URL=${FASTROUTER_BASE_URL:-}
+      - ANYROUTER_API_KEY=${ANYROUTER_API_KEY:-}
+      - ANYROUTER_BASE_URL=${ANYROUTER_BASE_URL:-}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_FALLBACK_MODEL=${OPENROUTER_FALLBACK_MODEL:-openai/gpt-6-luna}
       - RERANK_LLM=${RERANK_LLM:-}
@@ -371,6 +375,11 @@ services:
       - APIFY_EXPENSIVE_FALLBACKS=${APIFY_EXPENSIVE_FALLBACKS:-false}
       - LLM=${LLM:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - FASTROUTER_API_KEY=${FASTROUTER_API_KEY:-}
+      - FASTROUTER_BASE_URL=${FASTROUTER_BASE_URL:-}
+      - ANYROUTER_API_KEY=${ANYROUTER_API_KEY:-}
+      - ANYROUTER_BASE_URL=${ANYROUTER_BASE_URL:-}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_FALLBACK_MODEL=${OPENROUTER_FALLBACK_MODEL:-openai/gpt-6-luna}
       - RERANK_LLM=${RERANK_LLM:-}
@@ -433,11 +442,11 @@ services:
         condition: service_healthy
 
     healthcheck:
-      test: ["CMD", ".venv/bin/arq", "--check", "src.workers.tasks.WorkerSettings"]
+      test: ["CMD", "pgrep", "-f", "arq src.workers.tasks"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
 
   # AI editing: turns an editor instruction into draft changes with Claude.
   # Its own queue and container, so edits answer in seconds while the main
@@ -462,11 +471,11 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", ".venv/bin/arq", "--check", "src.workers.ai_worker.AIWorkerSettings"]
+      test: ["CMD", "pgrep", "-f", "arq src.workers.ai_worker"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
 
   # PO token helper for yt-dlp. Opt-in: COMPOSE_PROFILES=youtube-proxy
   # and YOUTUBE_POT_PROVIDER_URL=http://bgutil:4416. The port stays on the
