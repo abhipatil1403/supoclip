@@ -18,6 +18,8 @@ import { getUpgradeState } from "@/components/billing/upgrade-prompt";
 import { fetchGenerations, timeAgo, type GenerationSummary } from "@/lib/generations";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Announcements } from "@/components/announcements";
+import { MobileNodeModal } from "@/components/app/backend-node-modal";
+
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAppTheme } from "@/components/theme-provider";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -128,6 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </button>
 
         <div className="mt-auto w-full space-y-2 pb-3">
+          <MobileNodeModal compact={compact} />
           <Announcements key={user.id} userId={user.id} compact={compact} className="w-full" />
           {!compact && billing?.monetization_enabled && <UsageCard billing={billing} />}
           <UserRow compact={compact} name={user.name} email={user.email} />
@@ -140,6 +143,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Image src="/logo.png" alt="" width={22} height={22} className="size-[22px] dark:invert" />SupoClip
           </Link>
           <div className="flex items-center gap-1">
+            <MobileNodeModal compact />
             <Announcements key={user.id} userId={user.id} compact />
             <ThemeToggle tooltipSide="bottom" className="rounded-lg p-2 hover:bg-accent [&_svg]:size-5" />
             <button type="button" onClick={() => setPaletteOpen(true)} aria-label={t("search.generations")} className="rounded-lg p-2 text-muted-foreground hover:bg-accent">

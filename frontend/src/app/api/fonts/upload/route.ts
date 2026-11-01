@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   }
 
   const formData = await request.formData();
-  const apiUrl = getBackendApiBaseUrl();
+  const apiUrl = await getBackendApiBaseUrl();
   const normalizedApiUrl = apiUrl.replace(/\/$/, "");
   const backendAuthHeaders = { ...buildBackendAuthHeaders(session.user.id), ...(await backendTraceHeaders()) };
 

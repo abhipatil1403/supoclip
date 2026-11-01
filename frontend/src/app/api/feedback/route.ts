@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   }
 
   const payload = await request.text();
-  const apiUrl = getBackendApiBaseUrl();
+  const apiUrl = await getBackendApiBaseUrl();
 
   const upstream = await fetch(`${apiUrl}/feedback`, {
     method: "POST",

@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
   const payload = await request.json().catch(() => null);
   if (payload) {
-    const internalUrl = getBackendApiBaseUrl();
+    const internalUrl = await getBackendApiBaseUrl();
     const upstream = await fetch(`${internalUrl.replace(/\/$/, "")}/upload/authorize`, {
       method: "POST",
       headers: { ...buildBackendAuthHeaders(session.user.id), ...(await backendTraceHeaders()), "Content-Type": "application/json" },
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const apiUrl = getBackendApiBaseUrl();
+  const apiUrl = await getBackendApiBaseUrl();
   const normalizedApiUrl = apiUrl.replace(/\/$/, "");
 
   return NextResponse.json(

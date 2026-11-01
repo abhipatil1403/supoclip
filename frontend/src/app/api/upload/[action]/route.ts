@@ -13,7 +13,7 @@ export async function POST(request: Request, context: { params: Promise<{ action
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const apiUrl = getBackendApiBaseUrl();
+  const apiUrl = await getBackendApiBaseUrl();
   const response = await fetch(`${apiUrl.replace(/\/$/, "")}/upload/${action}`, {
     method: "POST",
     headers: { ...buildBackendAuthHeaders(session.user.id), ...(await backendTraceHeaders()), "Content-Type": "application/json" },

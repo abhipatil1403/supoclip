@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   }
 
   const payload = await request.text();
-  const apiUrl = getBackendApiBaseUrl();
+  const apiUrl = await getBackendApiBaseUrl();
   const idempotencyKey = request.headers.get("idempotency-key");
   const upstream = await fetch(`${apiUrl}/tasks/`, {
     method: "POST",

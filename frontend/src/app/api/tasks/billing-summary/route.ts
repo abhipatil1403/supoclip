@@ -12,7 +12,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const apiUrl = getBackendApiBaseUrl();
+  const apiUrl = await getBackendApiBaseUrl();
   const loadSummary = async () => {
     const upstream = await fetch(`${apiUrl}/tasks/billing/summary`, {
       method: "GET",

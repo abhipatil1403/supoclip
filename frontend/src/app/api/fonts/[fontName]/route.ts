@@ -16,7 +16,7 @@ export async function GET(_: Request, { params }: Params) {
   }
 
   const { fontName } = await params;
-  const apiUrl = getBackendApiBaseUrl();
+  const apiUrl = await getBackendApiBaseUrl();
   const normalizedApiUrl = apiUrl.replace(/\/$/, "");
   const encodedFontName = encodeURIComponent(fontName);
   const backendAuthHeaders = { ...buildBackendAuthHeaders(session.user.id), ...(await backendTraceHeaders()) };
@@ -54,7 +54,7 @@ export async function DELETE(_: Request, { params }: Params) {
   }
 
   const { fontName } = await params;
-  const apiUrl = getBackendApiBaseUrl();
+  const apiUrl = await getBackendApiBaseUrl();
   const normalizedApiUrl = apiUrl.replace(/\/$/, "");
   const encodedFontName = encodeURIComponent(fontName);
   const backendAuthHeaders = { ...buildBackendAuthHeaders(session.user.id), ...(await backendTraceHeaders()) };

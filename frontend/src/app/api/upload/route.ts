@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ detail: "A multipart upload is required" }, { status: 400 });
   }
 
-  const apiUrl = getBackendApiBaseUrl();
+  const apiUrl = await getBackendApiBaseUrl();
   const normalizedApiUrl = apiUrl.replace(/\/$/, "");
   const forwardHeaders: Record<string, string> = {
     ...buildBackendAuthHeaders(session.user.id),
