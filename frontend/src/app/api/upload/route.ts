@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 // A multi-gigabyte body can take longer than the platform default to stream
 // through. Host nginx in front of this route needs the same room; see
 // docs/media-storage.md.
-export const maxDuration = 3600;
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
