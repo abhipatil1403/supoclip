@@ -1,3 +1,4 @@
+import { getBackendApiBaseUrl } from "@/server/backend-api";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -12,10 +13,7 @@ export async function POST(request: Request) {
   }
 
   const payload = await request.text();
-  const apiUrl =
-    process.env.BACKEND_INTERNAL_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:8000";
+  const apiUrl = getBackendApiBaseUrl();
 
   const upstream = await fetch(`${apiUrl}/feedback`, {
     method: "POST",

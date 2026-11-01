@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { buildBackendAuthHeaders } from "@/lib/backend-auth";
-import { backendTraceHeaders } from "@/server/backend-api";
+import { backendTraceHeaders, getBackendApiBaseUrl } from "@/server/backend-api";
 
 interface Params {
   params: Promise<{ fontName: string }>;
@@ -16,10 +16,7 @@ export async function GET(_: Request, { params }: Params) {
   }
 
   const { fontName } = await params;
-  const apiUrl =
-    process.env.BACKEND_INTERNAL_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:8000";
+  const apiUrl = getBackendApiBaseUrl();
   const normalizedApiUrl = apiUrl.replace(/\/$/, "");
   const encodedFontName = encodeURIComponent(fontName);
   const backendAuthHeaders = { ...buildBackendAuthHeaders(session.user.id), ...(await backendTraceHeaders()) };
@@ -57,10 +54,7 @@ export async function DELETE(_: Request, { params }: Params) {
   }
 
   const { fontName } = await params;
-  const apiUrl =
-    process.env.BACKEND_INTERNAL_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:8000";
+  const apiUrl = getBackendApiBaseUrl();
   const normalizedApiUrl = apiUrl.replace(/\/$/, "");
   const encodedFontName = encodeURIComponent(fontName);
   const backendAuthHeaders = { ...buildBackendAuthHeaders(session.user.id), ...(await backendTraceHeaders()) };

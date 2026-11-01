@@ -1,3 +1,4 @@
+import { getBackendApiBaseUrl } from "@/server/backend-api";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -40,10 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ detail: "A multipart upload is required" }, { status: 400 });
   }
 
-  const apiUrl =
-    process.env.BACKEND_INTERNAL_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:8000";
+  const apiUrl = getBackendApiBaseUrl();
   const normalizedApiUrl = apiUrl.replace(/\/$/, "");
   const forwardHeaders: Record<string, string> = {
     ...buildBackendAuthHeaders(session.user.id),
