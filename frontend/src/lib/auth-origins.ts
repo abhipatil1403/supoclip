@@ -18,6 +18,9 @@ function toOrigin(value?: string): string | null {
 
 export function getAuthTrustedOrigins(env: AuthOriginEnvironment): string[] {
   const origins = [
+    toOrigin(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined),
+    toOrigin(process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : undefined),
+    "https://supoclip-alpha.vercel.app",
     toOrigin(env.NEXT_PUBLIC_APP_URL),
     toOrigin(env.BETTER_AUTH_URL),
     // Retain the existing origins for compatibility with hosted deployments.
