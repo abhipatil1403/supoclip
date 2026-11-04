@@ -152,9 +152,9 @@ function SocialSettingsContent() {
   }
 
   const fallbackProviders: SocialProviderStatus[] = [
-    { provider: "youtube", display_name: "YouTube Shorts", configured: false, supported_privacy_levels: ["public", "unlisted", "private"], default_privacy_level: "private" },
-    { provider: "tiktok", display_name: "TikTok", configured: false, supported_privacy_levels: ["public", "private"], default_privacy_level: "private" },
-    { provider: "instagram", display_name: "Instagram", configured: false, supported_privacy_levels: ["public"], default_privacy_level: "public" },
+    { provider: "youtube", display_name: "YouTube Shorts", configured: false, supported_privacy_levels: ["public", "unlisted", "private"], default_privacy_level: "private", setup_hint: null },
+    { provider: "tiktok", display_name: "TikTok", configured: false, supported_privacy_levels: ["public", "private"], default_privacy_level: "private", setup_hint: null },
+    { provider: "instagram", display_name: "Instagram", configured: false, supported_privacy_levels: ["public"], default_privacy_level: "public", setup_hint: null },
   ];
   const activeProviders = providers.length > 0 ? providers : fallbackProviders;
 
