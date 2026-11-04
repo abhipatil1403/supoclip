@@ -383,9 +383,9 @@ export function ClipPublishButton({
     }
   };
 
-  const generateCaption = async (id: string) => {
-    const connection = activeConnections.find((item) => item.id === id);
-    if (!connection) return;
+  const generateCaption = async (idOrProvider: string) => {
+    const connection = activeConnections.find((item) => item.id === idOrProvider);
+    const provider = connection ? connection.provider : idOrProvider;
     const request = ++captionRequest.current;
     const revision = captionRevision.current;
     setIsGeneratingCaption(true);
@@ -394,7 +394,7 @@ export function ClipPublishButton({
       const response = await fetch("/api/social/captions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task_id: taskId, clip_id: clip.id, provider: connection.provider }),
+        body: JSON.stringify({ task_id: taskId, clip_id: clip.id, provider }),
       });
       if (!response.ok) throw new Error(await readError(response, t("captionFailed")));
       const data = await response.json();
@@ -445,7 +445,7 @@ export function ClipPublishButton({
       if (connection.provider === "tiktok") void loadPrivacyOptions(connection.id, epoch);
     }
     setOpen(true);
-    if (nextIds[0]) void generateCaption(nextIds[0]);
+    void generateCaption(nextIds[0] || "youtube");
   };
 
   const toggleAccount = (id: string) => {
@@ -454,8 +454,7 @@ export function ClipPublishButton({
     setAccountIds((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
   };
 
-  // Without a configured platform there is nothing to publish to.
-  if (!anyProviderConfigured) return null;
+  // Show publish/export options for YouTube Shorts even before OAuth setup
 
   const handleSubmit = async () => {
     if (submitting.current || pendingConnections.length === 0 || !privacyReady) return;
@@ -562,14 +561,81 @@ export function ClipPublishButton({
             )}
 
             {activeConnections.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                {t.rich("emptyAccounts", {
-                  link: (chunks) => (
-                    <Link href="/settings/social" className="font-medium text-foreground underline underline-offset-4">
-                      {chunks}
+              <div className="space-y-4">
+                <div className="rounded-xl border border-dashed p-4 text-xs text-muted-foreground bg-muted/20">
+                  <p className="font-semibold text-foreground text-sm mb-1">Direct YouTube Upload</p>
+                  <p className="mb-2">
+                    Connect your YouTube channel in Settings for 1-click automatic uploads, or use the AI-generated Title &amp; Description below to publish on YouTube Studio right now!
+                  </p>
+                  <Button asChild size="sm" variant="outline" className="h-8 text-xs">
+                    <Link href="/settings/social">
+                      Connect YouTube in Settings
+                      <ChevronRight className="size-3.5 ml-1" />
                     </Link>
-                  ),
-                })}
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">Title (for YouTube Shorts)</Label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(title);
+                        toast.success("Title copied!");
+                      }}
+                    >
+                      Copy Title
+                    </Button>
+                  </div>
+                  <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">Description &amp; Hashtags</Label>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs"
+                        disabled={isGeneratingCaption}
+                        onClick={() => void generateCaption("youtube")}
+                      >
+                        {isGeneratingCaption ? <Loader2 className="size-3 animate-spin mr-1" /> : null}
+                        AI Rewrite
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          const fullCopy = `${caption}\n\n${hashtags}`;
+                          void navigator.clipboard.writeText(fullCopy.trim());
+                          toast.success("Description copied!");
+                        }}
+                      >
+                        Copy All
+                      </Button>
+                    </div>
+                  </div>
+                  <Textarea rows={4} value={caption} onChange={(e) => setCaption(e.target.value)} />
+                  <Input placeholder="Hashtags: #Shorts #viral #trending" value={hashtags} onChange={(e) => setHashtags(e.target.value)} />
+                </div>
+
+                <div className="pt-2">
+                  <Button asChild variant="default" className="w-full">
+                    <a href="https://studio.youtube.com" target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="size-4 mr-2" />
+                      Open YouTube Studio
+                    </a>
+                  </Button>
+                </div>
               </div>
             ) : (
               <>

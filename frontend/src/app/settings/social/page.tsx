@@ -150,24 +150,20 @@ function SocialSettingsContent() {
     );
   }
 
-  if (isFetching && enabled === null) {
+  if (isFetching && providers.length === 0 && connections.length === 0) {
     return <PageSkeleton />;
   }
 
-  if (enabled !== true) {
-    return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-8 md:py-10">
-        <h1 className="font-display text-3xl font-bold tracking-tight">{t("page.title")}</h1>
-        <p className="mt-2 text-muted-foreground">
-          {error ?? t("page.unavailable")}
-        </p>
-      </main>
-    );
-  }
+  const fallbackProviders: SocialProviderStatus[] = [
+    { provider: "youtube", display_name: "YouTube Shorts", configured: false, supported_privacy_levels: ["public", "unlisted", "private"], default_privacy_level: "private" },
+    { provider: "tiktok", display_name: "TikTok", configured: false, supported_privacy_levels: ["public", "private"], default_privacy_level: "private" },
+    { provider: "instagram", display_name: "Instagram", configured: false, supported_privacy_levels: ["public"], default_privacy_level: "public" },
+  ];
+  const activeProviders = providers.length > 0 ? providers : fallbackProviders;
 
   const providerGroups = [
-    providers.filter((provider) => provider.configured),
-    providers.filter((provider) => !provider.configured),
+    activeProviders.filter((provider) => provider.configured),
+    activeProviders.filter((provider) => !provider.configured),
   ].filter((group) => group.length > 0);
 
   return (
@@ -262,6 +258,32 @@ function SocialSettingsContent() {
                 ))}
               </div>
             ))}
+          </div>
+        )}
+        {!activeProviders.some((p) => p.provider === "youtube" && p.configured) && (
+          <div className="mt-4 rounded-xl border bg-muted/40 p-5 text-sm space-y-3">
+            <div className="flex items-center gap-2 font-semibold text-foreground">
+              <SocialProviderIcon provider="youtube" className="size-5 text-red-500" />
+              <span>Connect YouTube Shorts Direct Upload</span>
+            </div>
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              To publish clips directly to your YouTube channel as Shorts with 1 click, add your Google OAuth credentials:
+            </p>
+            <ol className="list-decimal list-inside space-y-1.5 text-xs text-muted-foreground pl-1">
+              <li>Open <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener noreferrer" className="text-foreground underline font-medium">Google Cloud Console</a> and click <strong>Enable YouTube Data API v3</strong>.</li>
+              <li>Go to <strong>APIs &amp; Services &rarr; Credentials &rarr; Create Credentials &rarr; OAuth client ID</strong>.</li>
+              <li>Select <strong>Web application</strong>, and under <em>Authorized redirect URIs</em>, enter:<br />
+                <code className="mt-1 inline-block select-all rounded bg-muted px-2 py-1 font-mono text-[11px] text-foreground">
+                  https://supoclip-alpha.vercel.app/api/social/callback/youtube
+                </code>
+              </li>
+              <li>Set your <strong>Client ID</strong> and <strong>Client Secret</strong> in your environment variables:
+                <pre className="mt-1 rounded bg-muted/70 p-2 font-mono text-[11px] text-foreground select-all">
+YOUTUBE_OAUTH_CLIENT_ID=your_id.apps.googleusercontent.com
+YOUTUBE_OAUTH_CLIENT_SECRET=GOCSPX-your_secret</pre>
+              </li>
+              <li>Once added, click <strong>Connect</strong> above to authorize your channel!</li>
+            </ol>
           </div>
         )}
       </section>

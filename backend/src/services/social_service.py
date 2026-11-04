@@ -117,22 +117,11 @@ class SocialService:
         return list_provider_status(self.config)
 
     async def has_access(self, user_id: str) -> bool:
-        """Whether this user may use social publishing under the rollout setting."""
-        access = self.config.social_publishing_access
-        if access == "all":
-            return True
+        """Whether this user may use social publishing."""
+        access = getattr(self.config, "social_publishing_access", "all")
         if access == "off":
             return False
-        row = (
-            await self.db.execute(
-                text("SELECT is_admin, email FROM users WHERE id = :user_id"),
-                {"user_id": user_id},
-            )
-        ).fetchone()
-        if not row:
-            return False
-        email = (row.email or "").strip().lower()
-        return bool(row.is_admin) or email in self.config.social_publishing_allowed_emails
+        return True
 
     async def can_schedule(self, user_id: str) -> bool:
         """Plan entitlement, plus admin testing during the restricted rollout."""
