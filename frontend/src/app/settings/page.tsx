@@ -15,7 +15,6 @@ import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useSession } from "@/lib/auth-client";
-import { useSocialAccess } from "@/hooks/use-social-access";
 import {
   annualFullPrice,
   annualMonthlyEquivalent,
@@ -60,7 +59,6 @@ export default function SettingsPage() {
   const [isBillingActionLoading, setIsBillingActionLoading] = useState(false);
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("month");
   const { data: session, isPending } = useSession();
-  const socialAccess = useSocialAccess(Boolean(session?.user));
   const t = useTranslations("settings");
   const common = useTranslations("common");
   const tLang = useTranslations("language");

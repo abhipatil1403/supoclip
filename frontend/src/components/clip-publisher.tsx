@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import {
   AlertCircle,
   Check,
+  ChevronRight,
   Clock,
   ExternalLink,
   Loader2,
@@ -354,7 +355,6 @@ export function ClipPublishButton({
     const chosen = privacyByAccount[id];
     return chosen && privacyOptionsFor(provider).includes(chosen) ? chosen : defaultPrivacyFor(provider);
   };
-  const anyProviderConfigured = providers.some((provider) => provider.configured);
   const privacyOptionsForAccount = (id: string) => activeConnections.find((c) => c.id === id)?.provider === "tiktok"
     ? accountPrivacy[id]?.levels ?? [] : privacyOptionsFor(providerForAccount(id));
   const privacyReady = pendingConnections.every((connection) => {

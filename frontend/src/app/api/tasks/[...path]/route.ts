@@ -44,7 +44,7 @@ async function proxyTaskRequest(
       body,
       cache: "no-store",
     });
-  } catch (_error) {
+  } catch {
     if (request.signal.aborted) {
       return new Response(null, { status: 499 });
     }

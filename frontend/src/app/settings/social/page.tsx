@@ -21,7 +21,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScheduledPosts } from "@/components/scheduled-posts";
 import { SocialProviderIcon } from "@/components/social-provider-icon";
-import { isSocialPublishingEnabled } from "@/hooks/use-social-access";
 import { useSession } from "@/lib/auth-client";
 import {
   PROVIDER_LABELS,
@@ -58,7 +57,6 @@ function SocialSettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [providers, setProviders] = useState<SocialProviderStatus[]>([]);
-  const [enabled, setEnabled] = useState<boolean | null>(null);
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +78,6 @@ function SocialSettingsContent() {
         enabled?: boolean;
         providers: SocialProviderStatus[];
       };
-      setEnabled(isSocialPublishingEnabled(providersData));
       const connectionsData = connectionsResponse.ok
         ? ((await connectionsResponse.json()) as { connections: SocialConnection[] })
         : { connections: [] };
