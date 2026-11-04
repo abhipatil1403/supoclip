@@ -125,6 +125,8 @@
     "medium": "Medium (30–60s)",
     "long": "Long (1–2 min)",
     "hint": "Target length before pause and filler removal. Your choice is saved as your default.",
-    "saveError": "Could not save your default. This video will still use your choice."
+    "saveError": "Could not save your default. This video will still use your choice.",
+    "extended": "Extended (2–5 min)",
+    "deep_dive": "Deep dive (5–10 min)"
   }
 }

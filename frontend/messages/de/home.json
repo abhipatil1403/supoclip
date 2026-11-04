@@ -125,6 +125,8 @@
     "medium": "Mittel (30–60 s)",
     "long": "Lang (1–2 Min.)",
     "hint": "Ziellänge vor dem Entfernen von Pausen und Füllwörtern. Deine Auswahl wird als Standard gespeichert.",
-    "saveError": "Standard konnte nicht gespeichert werden. Dieses Video verwendet trotzdem deine Auswahl."
+    "saveError": "Standard konnte nicht gespeichert werden. Dieses Video verwendet trotzdem deine Auswahl.",
+    "extended": "Erweitert (2–5 Min.)",
+    "deep_dive": "Ausführlich (5–10 Min.)"
   }
 }

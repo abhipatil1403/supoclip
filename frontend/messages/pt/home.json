@@ -125,6 +125,8 @@
     "medium": "Médio (30–60 s)",
     "long": "Longo (1–2 min)",
     "hint": "Duração desejada antes de remover pausas e vícios de linguagem. Sua escolha é salva como padrão.",
-    "saveError": "Não foi possível salvar o padrão. Este vídeo usará sua escolha."
+    "saveError": "Não foi possível salvar o padrão. Este vídeo usará sua escolha.",
+    "extended": "Estendido (2–5 min)",
+    "deep_dive": "Aprofundado (5–10 min)"
   }
 }

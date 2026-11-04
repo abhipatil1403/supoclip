@@ -18,12 +18,14 @@ CLIP_DURATIONS = {
     "short": ClipDuration(15, 30, 18, 25),
     "medium": ClipDuration(30, 60, 35, 55),
     "long": ClipDuration(60, 120, 75, 110),
+    "extended": ClipDuration(120, 300, 150, 270),
+    "deep_dive": ClipDuration(300, 600, 360, 540),
 }
 
 
 def validate_clip_length(value: Any) -> str:
     if not isinstance(value, str) or value not in CLIP_DURATIONS:
-        raise ValueError("clip_length must be auto, short, medium, or long")
+        raise ValueError("clip_length must be auto, short, medium, long, extended, or deep_dive")
     return value
 
 

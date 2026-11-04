@@ -1721,7 +1721,22 @@ async def get_most_relevant_parts_by_transcript(
         agent = get_transcript_agent(clip_length)
         transcript_lines = _parse_transcript_lines(transcript)
         transcript_spans = _parse_transcript_spans(transcript)
-        windows = split_transcript_into_windows(transcript)
+        if clip_length == "deep_dive":
+            windows = split_transcript_into_windows(
+                transcript,
+                window_seconds=25 * 60,
+                overlap_seconds=6 * 60,
+                single_window_max_seconds=30 * 60,
+            )
+        elif clip_length == "extended":
+            windows = split_transcript_into_windows(
+                transcript,
+                window_seconds=18 * 60,
+                overlap_seconds=4 * 60,
+                single_window_max_seconds=20 * 60,
+            )
+        else:
+            windows = split_transcript_into_windows(transcript)
 
         if len(windows) == 1:
             result = await _run_transcript_analysis(

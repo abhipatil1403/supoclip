@@ -245,11 +245,10 @@ class Config:
         self.social_publish_max_attempts = int(
             os.getenv("SOCIAL_PUBLISH_MAX_ATTEMPTS", "3")
         )
-        # Who may use social publishing: "off" (default; nav and pages stay
-        # hidden), "admins" (admins plus the allowlist, for a gated rollout)
-        # or "all".
+        # Who may use social publishing: "all" (default enabled for self-hosted
+        # and multi-tenant instances), "admins" or "off".
         self.social_publishing_access = (
-            os.getenv("SOCIAL_PUBLISHING_ACCESS", "off").strip().lower() or "off"
+            os.getenv("SOCIAL_PUBLISHING_ACCESS", "all").strip().lower() or "all"
         )
         if self.social_publishing_access not in {"all", "admins", "off"}:
             raise ValueError("SOCIAL_PUBLISHING_ACCESS must be all, admins or off")
