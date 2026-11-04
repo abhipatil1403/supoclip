@@ -190,7 +190,12 @@ class SocialService:
         return {"privacy_levels": levels, "requires_privacy_selection": provider.name == "tiktok"}
 
     async def start_connection(
-        self, user_id: str, provider_name: str, *, client: Optional[str] = None
+        self,
+        user_id: str,
+        provider_name: str,
+        *,
+        client: Optional[str] = None,
+        redirect_uri: Optional[str] = None,
     ) -> Dict[str, Any]:
         provider = self._provider(provider_name)
         state = secrets.token_urlsafe(32)
@@ -202,18 +207,18 @@ class SocialService:
             code_verifier = secrets.token_urlsafe(64)[:128]
             digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
             code_challenge = base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
-        redirect_uri = self.redirect_uri_for(provider.name)
+        target_redirect_uri = redirect_uri or self.redirect_uri_for(provider.name)
         await self.repo.create_oauth_state(
             self.db,
             state=state,
             user_id=user_id,
             provider=provider.name,
             code_verifier=code_verifier,
-            redirect_uri=redirect_uri,
+            redirect_uri=target_redirect_uri,
             ttl_seconds=OAUTH_STATE_TTL_SECONDS,
         )
         authorize_url = provider.build_authorize_url(
-            state=state, redirect_uri=redirect_uri, code_challenge=code_challenge
+            state=state, redirect_uri=target_redirect_uri, code_challenge=code_challenge
         )
         return {"provider": provider.name, "authorize_url": authorize_url, "state": state}
 

@@ -2,7 +2,7 @@ export const SITE_NAME = "SupoClip";
 export const COMPANY_NAME = "Shiori LLC";
 export const COMPANY_REGISTRATION_NUMBER = "10603065";
 export const COMPANY_REGISTERED_ADDRESS = "8 The Green, Suite B, Dover, DE 19901, United States";
-export const DEFAULT_SITE_URL = "https://www.supoclip.com";
+export const DEFAULT_SITE_URL = "https://supoclip-alpha.vercel.app";
 export const HOSTED_APP_URL = DEFAULT_SITE_URL;
 export const GITHUB_URL = "https://github.com/FujiwaraChoki/supoclip";
 export const APP_STORE_ID = "6784760040";
@@ -18,9 +18,17 @@ export function appStoreRedeemUrl(code: string) {
   return `https://apps.apple.com/redeem?ctx=offercodes&id=${APP_STORE_ID}&code=${encodeURIComponent(code.toUpperCase())}`;
 }
 
-export function getSiteUrl() {
+export function getSiteUrl(contextUrl?: string) {
   try {
-    return new URL(process.env.NEXT_PUBLIC_APP_URL || DEFAULT_SITE_URL).origin;
+    if (contextUrl) {
+      return new URL(contextUrl).origin;
+    }
+    const candidate =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null) ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+      DEFAULT_SITE_URL;
+    return new URL(candidate).origin;
   } catch {
     return DEFAULT_SITE_URL;
   }

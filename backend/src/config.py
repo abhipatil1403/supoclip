@@ -206,7 +206,7 @@ class Config:
             "SES_FROM_EMAIL", "SupoClip <onboarding@example.com>"
         )
         self.app_base_url = (
-            self._get_optional_env("NEXT_PUBLIC_APP_URL") or "http://localhost:3107"
+            self._get_optional_env("NEXT_PUBLIC_APP_URL") or "https://supoclip-alpha.vercel.app"
         ).rstrip("/")
         self.discord_feedback_webhook_url = self._get_optional_env("DISCORD_FEEDBACK_WEBHOOK_URL")
         self.discord_sales_webhook_url = self._get_optional_env("DISCORD_SALES_WEBHOOK_URL")

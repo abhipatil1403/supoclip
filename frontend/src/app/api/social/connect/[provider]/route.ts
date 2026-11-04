@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { getSiteUrl } from "@/lib/site";
-
 import { fetchBackend } from "@/server/backend-api";
 import { getServerSession } from "@/server/session";
 
 const SUPPORTED_PROVIDERS = new Set(["youtube", "tiktok", "instagram"]);
 
-function settingsRedirect(query: Record<string, string>) {
-  const url = new URL("/settings/social", getSiteUrl());
+function settingsRedirect(request: Request, query: Record<string, string>) {
+  const url = new URL("/settings/social", request.url);
   for (const [key, value] of Object.entries(query)) {
     url.searchParams.set(key, value);
   }
@@ -23,21 +21,22 @@ export async function GET(
 ) {
   const { provider } = await params;
   if (!SUPPORTED_PROVIDERS.has(provider)) {
-    return settingsRedirect({ error: "Unknown provider" });
+    return settingsRedirect(request, { error: "Unknown provider" });
   }
 
   const session = await getServerSession();
   if (!session?.user?.id) {
-    const signIn = new URL("/sign-in", getSiteUrl());
+    const signIn = new URL("/sign-in", request.url);
     signIn.searchParams.set("next", "/settings/social");
     return NextResponse.redirect(signIn);
   }
 
+  const callbackUrl = new URL(`/api/social/callback/${provider}`, request.url).toString();
   const upstream = await fetchBackend(`/social/connections/${provider}/authorize`, {
     method: "POST",
     userId: session.user.id,
     extraHeaders: { "Content-Type": "application/json" },
-    body: "{}",
+    body: JSON.stringify({ redirect_uri: callbackUrl }),
     cache: "no-store",
   });
 
@@ -47,7 +46,7 @@ export async function GET(
   };
 
   if (!upstream.ok || !payload.authorize_url) {
-    return settingsRedirect({
+    return settingsRedirect(request, {
       error: payload.detail || `Could not start the ${provider} connection`,
     });
   }

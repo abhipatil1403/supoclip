@@ -116,8 +116,11 @@ async def start_connection(
     user_id = await _allowed_user_id(request, db, session_only=True)
     body = await _json_body(request)
     client = body.get("client") if isinstance(body.get("client"), str) else None
+    redirect_uri = body.get("redirect_uri") if isinstance(body.get("redirect_uri"), str) else None
     try:
-        return await _service(request, db).start_connection(user_id, provider, client=client)
+        return await _service(request, db).start_connection(
+            user_id, provider, client=client, redirect_uri=redirect_uri
+        )
     except SocialError as exc:
         raise _http_error(exc)
 
