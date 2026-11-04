@@ -1,10 +1,15 @@
+from pathlib import Path
 from dotenv import load_dotenv
 import math
 import os
 
 from .runtime_settings import get_cached_setting, setting_prefers_admin
 
-load_dotenv()
+_backend_dir = Path(__file__).resolve().parent.parent
+_repo_dir = _backend_dir.parent
+load_dotenv(_backend_dir / ".env", override=True)
+load_dotenv(_repo_dir / ".env", override=True)
+load_dotenv(override=True)
 
 _config_override = None
 LOCAL_OLLAMA_BASE_URL = "http://localhost:11434/v1"
@@ -311,7 +316,7 @@ class Config:
         if value is None:
             return None
 
-        normalized = value.strip()
+        normalized = value.strip().strip('"').strip("'").strip()
         return normalized or None
 
     @classmethod
