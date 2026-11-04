@@ -37,7 +37,7 @@ from ..clip_cleanup import normalize_clip_cleanup_settings
 from ..clip_duration import clip_duration, validate_clip_length
 from ..ai import TRANSCRIPT_ANALYSIS_CACHE_VERSION
 from ..clip_source_map import load_clip_caption_settings
-from ..media_storage import MediaStorage, media_work
+from ..media_storage import MediaStorage, media_work, is_s3
 from ..utils.async_helpers import run_in_thread
 from ..repositories.media_repository import queue_delete, guard_source_creation
 from ..stream_source import cleanup_stream_path, cleanup_stream_task, seed_stream_resolution
@@ -528,12 +528,43 @@ class TaskService(ClipEditingMixin):
             clips_output_dir = Path(self.config.temp_dir) / "clips"
             clips_output_dir.mkdir(parents=True, exist_ok=True)
 
-            # Retries and regenerations should replace earlier clip rows instead of
-            # accumulating duplicates for the same task.
-            async with self._processing_transaction(task_id):
-                await check_cancelled()
-                await self.clip_repo.delete_clips_by_task(self.db, task_id)
-                await self.task_repo.update_task_clips(self.db, task_id, [])
+            # When resuming an interrupted task, check for existing valid clips
+            # so we only render missing clips instead of starting from clip 1 again.
+            existing_clips = await self.clip_repo.get_clips_by_task(self.db, task_id)
+            valid_existing_clips: Dict[int, Dict[str, Any]] = {}
+            storage = MediaStorage()
+
+            for clip in existing_clips or []:
+                clip_order = clip.get("clip_order")
+                file_path_str = clip.get("file_path")
+                file_valid = False
+                if file_path_str:
+                    try:
+                        if is_s3(file_path_str):
+                            file_valid = await run_in_thread(storage.exists, file_path_str)
+                        else:
+                            fpath = Path(file_path_str)
+                            file_valid = fpath.exists() and fpath.stat().st_size > 0
+                    except Exception:
+                        file_valid = False
+
+                if file_valid and clip_order is not None and 1 <= clip_order <= total_clips:
+                    valid_existing_clips[clip_order] = clip
+                else:
+                    # Clean up broken or stale clip row
+                    if clip.get("id"):
+                        try:
+                            await self.clip_repo.delete_clip(self.db, clip["id"])
+                        except Exception as exc:
+                            logger.warning("Could not delete stale clip %s: %s", clip.get("id"), exc)
+
+            if not valid_existing_clips:
+                # Retries and regenerations should replace earlier clip rows instead of
+                # accumulating duplicates for the same task.
+                async with self._processing_transaction(task_id):
+                    await check_cancelled()
+                    await self.clip_repo.delete_clips_by_task(self.db, task_id)
+                    await self.task_repo.update_task_clips(self.db, task_id, [])
 
             clip_ids = []
             render_start = perf_counter()
@@ -543,8 +574,34 @@ class TaskService(ClipEditingMixin):
             broll_session = BRollSession()
 
             for i, segment in enumerate(segments_to_render):
+                order = i + 1
                 # Check cancellation
                 await check_cancelled()
+
+                # If this clip was already generated in an earlier run and its file is intact, reuse it!
+                if order in valid_existing_clips:
+                    existing_clip = valid_existing_clips[order]
+                    clip_id = existing_clip["id"]
+                    clip_ids.append(clip_id)
+                    await self.task_repo.update_task_clips(self.db, task_id, clip_ids)
+                    logger.info(
+                        "Resuming task %s: reusing already generated clip %d/%d (id=%s)",
+                        task_id, order, total_clips, clip_id,
+                    )
+                    clip_progress = 70 + int(
+                        (order / total_clips) * 25
+                    ) if total_clips > 0 else 95
+                    await update_progress(
+                        clip_progress,
+                        f"Clip {order}/{total_clips} already generated, continuing...",
+                    )
+                    if clip_ready_callback:
+                        clip_record = await self.clip_repo.get_clip_by_id(
+                            self.db, clip_id
+                        )
+                        if clip_record:
+                            await clip_ready_callback(i, total_clips, clip_record)
+                    continue
 
                 # Update progress: 70-95% spread across clips
                 clip_progress = 70 + int(

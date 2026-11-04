@@ -2,10 +2,14 @@
 
 import asyncio
 import json
+from typing import Optional
 
 from pydantic_ai import Agent
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
+
+from ..config import get_config
+from ..ai import _build_transcript_model
 
 CAPTION_MODEL = "claude-haiku-5-5"
 CAPTION_PROMPT = """Write a social media post caption for the supplied video clip.
@@ -18,8 +22,12 @@ under 600 characters. No hashtags, Markdown, surrounding quotes, or commentary.
 Return only the ready-to-edit caption, not subtitles or a transcript dump."""
 
 
-async def generate_social_caption(api_key: str, clip: dict, provider: str) -> str:
-    model = AnthropicModel(CAPTION_MODEL, provider=AnthropicProvider(api_key=api_key))
+async def generate_social_caption(api_key: Optional[str], clip: dict, provider: str) -> str:
+    if api_key:
+        model = AnthropicModel(CAPTION_MODEL, provider=AnthropicProvider(api_key=api_key))
+    else:
+        model = _build_transcript_model(get_config())
+
     agent = Agent(
         model, output_type=str, system_prompt=CAPTION_PROMPT,
         model_settings={"max_tokens": 2048}, retries=1,

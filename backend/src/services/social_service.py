@@ -391,8 +391,19 @@ class SocialService:
             raise SocialValidationError("Unsupported social platform")
         if not (clip.get("text") or "").strip():
             raise SocialValidationError("This clip has no transcript to draft a caption from.")
-        if not self.config.anthropic_api_key:
-            raise SocialProviderUnavailable("Caption generation requires ANTHROPIC_API_KEY on the server.")
+        has_llm = bool(
+            self.config.anthropic_api_key
+            or self.config.openai_api_key
+            or self.config.google_api_key
+            or self.config.openrouter_api_key
+            or self.config.fastrouter_api_key
+            or self.config.anyrouter_api_key
+            or (self.config.llm or "").startswith("ollama:")
+        )
+        if not has_llm:
+            raise SocialProviderUnavailable(
+                "Caption generation requires an LLM API key (Google, OpenAI, Anthropic, or OpenRouter) configured on the server."
+            )
         try:
             caption = await generate_social_caption(self.config.anthropic_api_key, clip, provider)
         except Exception as exc:
