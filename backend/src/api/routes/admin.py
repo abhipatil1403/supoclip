@@ -67,6 +67,16 @@ SETTING_METADATA = {
         "description": "Optional metadata provider key.",
         "input_type": "password",
     },
+    "YOUTUBE_OAUTH_CLIENT_ID": {
+        "label": "YouTube OAuth Client ID",
+        "description": "Google Cloud Console OAuth 2.0 Client ID for YouTube Shorts upload.",
+        "input_type": "text",
+    },
+    "YOUTUBE_OAUTH_CLIENT_SECRET": {
+        "label": "YouTube OAuth Client Secret",
+        "description": "Google Cloud Console OAuth 2.0 Client Secret for YouTube Shorts upload.",
+        "input_type": "password",
+    },
     "APIFY_API_TOKEN": {
         "label": "Apify API token",
         "description": "Optional YouTube download fallback provider token.",

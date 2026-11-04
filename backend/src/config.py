@@ -338,6 +338,8 @@ class Config:
             "OLLAMA_BASE_URL": self.ollama_base_url,
             "OLLAMA_API_KEY": self.ollama_api_key,
             "YOUTUBE_DATA_API_KEY": self.youtube_data_api_key,
+            "YOUTUBE_OAUTH_CLIENT_ID": self.youtube_oauth_client_id,
+            "YOUTUBE_OAUTH_CLIENT_SECRET": self.youtube_oauth_client_secret,
             "APIFY_API_TOKEN": self.apify_api_token,
             "PEXELS_API_KEY": self.pexels_api_key,
         }
